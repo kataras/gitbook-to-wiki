@@ -44,14 +44,17 @@ var (
 	markdownSuffix = []byte(".md")
 
 	codeSnippet = []byte("```")
+
+	slideBreak = []byte("<!-- slide:break-100 -->")
 )
 
 var (
-	srcDir    = "./_testfiles"
-	destDir   = "./_testoutput.wiki"
-	wikiRepo  = "/kataras/iris/wiki"
-	verbose   = false
-	keepLinks = false
+	srcDir           = "./_testfiles"
+	destDir          = "./_testoutput.wiki"
+	wikiRepo         = "/kataras/iris/wiki"
+	verbose          = false
+	keepLinks        = false
+	appendSlideBreak = false
 )
 
 var (
@@ -65,15 +68,21 @@ var (
 	errSkipLine       = errors.New("skip line")
 )
 
+/*
+TODO: skip comments as we do with snippets, note that:
+snippets can have comments too and comments can have snippets too.
+*/
+
 // Examples:
 // $ gitbook-to-wiki -v ./iris-book ./iris-wiki-test.wiki /kataras/iris-wiki-test/wiki
-// $ gitbook-to-wiki -v --keep-links --src=./_testfiles --dest=./_testoutput
+// $ gitbook-to-wiki -v --keep-links --slidebreak --src=./_testfiles --dest=./_testoutput
 func main() {
 	flag.StringVar(&srcDir, "src", srcDir, "--src=./my_gitbook (source input)")
 	flag.StringVar(&destDir, "dest", destDir, "--dest=./my_repo.wiki (destination output)")
 	flag.StringVar(&wikiRepo, "remote", wikiRepo, "--remote=/me/my_repo/wiki (GitHub wiki page base)")
 	flag.BoolVar(&verbose, "v", verbose, "-v (to enable verbose messages)")
 	flag.BoolVar(&keepLinks, "keep-links", keepLinks, "--keep-links (to keep the files and links as they are)")
+	flag.BoolVar(&appendSlideBreak, "slidebreak", appendSlideBreak, "--slidebreak (to enable adding a slidebreak comment at the end of each markdown file)")
 	flag.Parse()
 
 	for i, arg := range flag.Args() {
@@ -182,8 +191,8 @@ func walkFn(inPath string, info os.FileInfo, err error) error {
 
 func parse(filename string, src io.Reader, dest io.Writer) error {
 	var (
-		out = bufio.NewWriter(dest)
-
+		out            = bufio.NewWriter(dest)
+		isMarkdownFile = strings.HasSuffix(filename, string(markdownSuffix))
 		// nr = &nameResolver{
 		// 	wikiRepo: "/kataras/iris/wiki",
 		// }
@@ -264,6 +273,12 @@ func parse(filename string, src io.Reader, dest io.Writer) error {
 		// inside of a line replacer, currently that happens to
 		// SUMMARY.md file only so we are  safe.
 		p.prevLine = line
+	}
+
+	if appendSlideBreak && isMarkdownFile {
+		out.Write(newLine)
+		out.Write(slideBreak)
+		out.Write(newLine)
 	}
 
 	return out.Flush()
