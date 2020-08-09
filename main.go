@@ -16,6 +16,15 @@ import (
 	"time"
 )
 
+// TODO: add --version flag and version command.
+// Variables set by go build.
+var (
+	// buildRevision is the build revision (docker commit string or git rev-parse HEAD).
+	buildRevision = ""
+	// buildTime is the build unix time (in seconds since 1970-01-01 00:00:00 UTC).
+	buildTime = ""
+)
+
 var (
 	slash      = []byte("/")
 	newLine    = []byte("\n")
