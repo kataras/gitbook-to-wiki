@@ -47,10 +47,11 @@ var (
 )
 
 var (
-	srcDir   = "./_testfiles"
-	destDir  = "./_testoutput.wiki"
-	wikiRepo = "/kataras/iris/wiki"
-	verbose  = false
+	srcDir    = "./_testfiles"
+	destDir   = "./_testoutput.wiki"
+	wikiRepo  = "/kataras/iris/wiki"
+	verbose   = false
+	keepLinks = false
 )
 
 var (
@@ -64,13 +65,15 @@ var (
 	errSkipLine       = errors.New("skip line")
 )
 
-// Example run:
-// gitbook-to-wiki -v ./iris-book ./iris-wiki-test.wiki /kataras/iris-wiki-test/wiki
+// Examples:
+// $ gitbook-to-wiki -v ./iris-book ./iris-wiki-test.wiki /kataras/iris-wiki-test/wiki
+// $ gitbook-to-wiki -v --keep-links --src=./_testfiles --dest=./_testoutput
 func main() {
 	flag.StringVar(&srcDir, "src", srcDir, "--src=./my_gitbook (source input)")
 	flag.StringVar(&destDir, "dest", destDir, "--dest=./my_repo.wiki (destination output)")
 	flag.StringVar(&wikiRepo, "remote", wikiRepo, "--remote=/me/my_repo/wiki (GitHub wiki page base)")
 	flag.BoolVar(&verbose, "v", verbose, "-v (to enable verbose messages)")
+	flag.BoolVar(&keepLinks, "keep-links", keepLinks, "--keep-links (to keep the files and links as they are)")
 	flag.Parse()
 
 	for i, arg := range flag.Args() {
@@ -269,6 +272,10 @@ func parse(filename string, src io.Reader, dest io.Writer) error {
 // resolvePath returns output (to be saved) fullpath.
 func resolvePath(name string) string {
 	name = filepath.ToSlash(name)
+	if keepLinks {
+		return name
+	}
+
 	name = strings.ReplaceAll(name, "../", "") // remove all ../, we don't handle it atm.
 
 	dir := path.Dir(name)
@@ -307,6 +314,10 @@ func resolvePath(name string) string {
 // or if it is asset, returns the full wiki link of the asset.
 func resolveLink(name string, wikiRepo string) string {
 	name = resolvePath(name)
+	if keepLinks {
+		return name
+	}
+
 	if strings.HasPrefix(name, "_assets") {
 		return path.Join(wikiRepo, name)
 	}
@@ -408,6 +419,10 @@ var unescapeLinksRegex = regexp.MustCompile(`\[(.*?)]\(([^()]+)\)`)
 
 func unescapeLinks(wikiRepo string) simpleLineReplacer {
 	return func(src []byte) ([]byte, error) {
+		if keepLinks {
+			return src, nil
+		}
+
 		result := make([]byte, len(src))
 		copy(result, src)
 
